@@ -3,22 +3,56 @@ version: '2'
 services:
 
   stock_input_mongo:
-    image: test
+    image: mongo
+    expose: 27017
+    environment:
+      - TEST=123
+    networks:
+      - input_network
 
   stock_input_postgres:
     image: test
+    networks:
+      - input_network
+
 
   stock_input_generator:
     image: test
+    networks:
+      - input_network
+
+  stock_kafka:
+    image: test
+    networks:
+      - input_network
+      - output_network
 
   stock_output_postgres:
     image: test
+    networks:
+      - input_network
+      - output_network
 
   stock_output_mongo:
     image: test
+    networks:
+      - input_network
+      - output_network
 
   stock_spark:
     image: test
+    networks:
+      - input_network
+      - output_network
 
   stock_python_analysis:
     image: test
+    networks:
+      - input_network
+      - output_network
+
+networks:
+  input_network:
+    name: "Input Network"
+  output_network:
+    name: "Output Network"
