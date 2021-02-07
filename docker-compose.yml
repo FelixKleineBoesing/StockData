@@ -1,6 +1,15 @@
 version: '3.5'
 
+
+# The services are listed in this order
+# DataBases
+# Kafka
+# Spark
+# Python
+
 services:
+
+  # DATABASES
 
   stock_input_mongo:
     image: mongo
@@ -64,14 +73,11 @@ services:
       - output_network
     restart: unless-stopped
 
-  stock_input_generator:
-    image: test
-    container_name: stock_input_generator
-    networks:
-      - input_network
+  # KAFKA SERVICES
 
   stock_zookeeper:
     image: bitnami/zookeeper:latest
+    user: root
     container_name: stock_zookeeper
     expose:
       - 2181
@@ -83,14 +89,15 @@ services:
 
   stock_kafka:
     image: bitnami/kafka:latest
-    container_name: stocK_kafka
+    user: root
+    container_name: stock_kafka
     expose:
       - 9092
     environment:
       - KAFKA_BROKER_ID=1
       - KAFKA_LISTENERS=PLAINTEXT://:9092
       - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://127.0.0.1:9092
-      - KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181
+      - KAFKA_ZOOKEEPER_CONNECT=stock_zookeeper:2181
       - ALLOW_PLAINTEXT_LISTENER=yes
     depends_on:
       - stock_input_mongo
@@ -102,19 +109,62 @@ services:
       - input_network
       - output_network
 
-  stock_spark:
-    image: test
-    container_name: stock_spark
+  # SPARK SERVICES
+
+  stock_spark_master:
+    image: docker.io/bitnami/spark:2-debian-10
+    container_name: stock_spark_master
+    environment:
+      - SPARK_MODE=master
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
+    expose:
+      - 8080
+      - 7077
+
+  stock_spark_worker:
+    image: docker.io/bitnami/spark:2-debian-10
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://stock_spark_master:7077
+      - SPARK_WORKER_MEMORY=1G
+      - SPARK_WORKER_CORES=1
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
     networks:
-      - input_network
       - output_network
 
+  spark_client:
+    image: docker.io/bitnami/spark:2-debian-10
+    entrypoint:
+      - sleep
+      - infinity
+    networks:
+      - output_network
+
+  # PYTHON SERVICES
+
   stock_python_analysis:
-    image: test
+    image: stock_python_analysis
+    build:
+      context: ./python
+      dockerfile: ./dockerfiles/analyzer.Dockerfile
     container_name: stock_python_analysis
     networks:
-      - input_network
       - output_network
+
+  stock_input_generator:
+    image: stock_input_generator
+    build:
+      context: ./python
+      dockerfile: ./dockerfiles/generator.Dockerfile
+    container_name: stock_input_generator
+    networks:
+      - input_network
 
 networks:
   input_network:
