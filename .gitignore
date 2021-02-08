@@ -4,3 +4,4 @@ env_files/.env-postgres-input
 env_files/.env-mongo-input
 env_files/.env-mongo-output
 
+python/data/

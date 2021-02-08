@@ -1,1 +1,1 @@
-fkbutils>=0.1.1
+fkbutils>=0.2.0
