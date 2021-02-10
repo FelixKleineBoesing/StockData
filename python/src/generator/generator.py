@@ -1,5 +1,4 @@
 import logging
-
 import numpy as np
 import pandas as pd
 from fkbutils.dbwrapper import PostgresWrapper
@@ -12,10 +11,12 @@ def generate_next_price(current_price: float, drift: float, vola: float, externa
     return current_price * (1 + drift + error_term * vola + external_term)
 
 
-def generate_new_prices(postgres: PostgresWrapper, batch_size: int = 120):
+def generate_new_prices(postgres: PostgresWrapper, batch_size: int = 120, minutes_logging: int = 20):
     """
 
     :param postgres:
+    :param batch_size
+    :param minutes_logging
     :return:
     """
     meta_data = postgres.get_table(table_name="meta_data")
@@ -71,3 +72,7 @@ def generate_new_prices(postgres: PostgresWrapper, batch_size: int = 120):
             postgres.insert_from_df(pd.DataFrame(new_prices), table_name="stock_data", commit=True)
             logging.info("Inserted a new batch of prices into the database!")
             new_prices = []
+            i = 0
+
+        if i % minutes_logging == 0:
+            logging.info("Generated next {} minutes".format(minutes_logging))

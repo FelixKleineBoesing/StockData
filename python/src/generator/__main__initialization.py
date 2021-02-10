@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 import pandas as pd
 import numpy as np
@@ -5,7 +6,7 @@ from fkbutils.dbwrapper.postgres import PostgresWrapper
 from fkbutils.misc.config_manager import ConfigManager
 
 from src.generator import get_default_variables
-from src.generator.misc import get_postgres_wrapper
+from src.misc.helpers import get_postgres_wrapper
 
 
 def import_init_dataset(postgres_wrapper: PostgresWrapper,
@@ -13,7 +14,8 @@ def import_init_dataset(postgres_wrapper: PostgresWrapper,
 
     count = postgres_wrapper.get_query("Select count(*) from stock_data;", fetch=True).iloc[0, 0]
     if count > 0:
-        raise AssertionError("Database is already initialised! Dump all volumes if you want to init a new db!")
+        logging.warning("Database is already initialised! Dump all volumes if you want to init a new db!")
+        return
     stock_data = pd.read_csv(stock_data_path)
     stock_data["date"] = pd.to_datetime(stock_data["date"])
     stock_data = calculate_returns_per_minute(stock_data)

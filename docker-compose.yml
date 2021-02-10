@@ -188,6 +188,9 @@ services:
       - POSTGRES_INPUT_HOST=stock-input-postgres
     networks:
       - input_network
+    command:
+      - python -m ./src/generator/__main__.py 
+
 
 networks:
   input_network:

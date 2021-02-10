@@ -1,1 +1,6 @@
 FROM python:3.7
+
+ENV PYTHONPATH=/app
+ENV PYTHONUNBUFFERED=1
+
+RUN mkdir /app

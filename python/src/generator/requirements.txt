@@ -1,1 +1,3 @@
-fkbutils>=0.2.0
+fkbutils>=0.2.1
+numpy>=1.18.5
+pandas>=1.1.4
