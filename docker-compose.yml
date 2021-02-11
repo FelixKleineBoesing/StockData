@@ -47,7 +47,7 @@ services:
     restart: unless-stopped
 
   stock-input-postgres:
-    image: postgres
+    image: debezium/postgres:11
     container_name: stock-input-postgres
     expose:
       - 5432
@@ -66,7 +66,7 @@ services:
     restart: unless-stopped
 
   stock-output-postgres:
-    image: postgres
+    image: debezium/postgres:11
     container_name: stock-output-postgres
     expose:
       - 5432
@@ -88,7 +88,7 @@ services:
   # KAFKA SERVICES
 
   stock-zookeeper:
-    image: bitnami/zookeeper:latest
+    image: confluentinc/cp-zookeeper:5.1.2
     user: root
     container_name: stock-zookeeper
     expose:
@@ -100,7 +100,7 @@ services:
       - output_network
 
   stock-kafka:
-    image: bitnami/kafka:latest
+    image: confluentinc/cp-kafka:5.1.2
     user: root
     container_name: stock-kafka
     expose:
@@ -120,6 +120,52 @@ services:
     networks:
       - input_network
       - output_network
+
+    stock-schema-registry:
+      image: confluentinc/cp-schema-registry:5.1.2
+      container_name: stock-schema-registry
+      hostname: schema-registry
+      ports:
+        - 8081:8081
+      depends_on:
+        - stock-zookeeper
+        - stock-kafka
+      environment:
+        SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: PLAINTEXT://kafka:9092
+        SCHEMA_REGISTRY_HOST_NAME: schema-registry
+        SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL: zookeeper:2181
+        SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+
+    stock-ksql-server:
+      image: confluentinc/cp-ksql-server:5.1.2
+      container_name: stock-ksql-server
+      depends_on:
+        - stock-kafka
+        - stock-schema-registry
+      environment:
+        KSQL_BOOTSTRAP_SERVERS: kafka:9092
+        KSQL_LISTENERS: http://0.0.0.0:8088
+        KSQL_KSQL_SCHEMA_REGISTRY_URL: http://schema-registry:8081
+        KSQL_KSQL_SERVICE_ID: ksql-server
+
+    stock-connect:
+      image: mtpatter/debezium-connect  # built from debezium/connect:0.10
+      container_name: stock-connect
+      depends_on:
+        - stock-zookeeper
+        - stock-kafka
+        - stock-input-postgres
+        - stock-output-postgres
+      ports:
+        - 8083:8083
+      environment:
+        GROUP_ID: 1
+        CONFIG_STORAGE_TOPIC: my-connect-configs
+        OFFSET_STORAGE_TOPIC: my-connect-offsets
+        ADVERTISED_HOST_NAME: connect
+        BOOTSTRAP_SERVERS: kafka:9092
+        CONNECT_INTERNAL_KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+        CONNECT_INTERNAL_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverte
 
   # SPARK SERVICES
 
@@ -189,7 +235,7 @@ services:
     networks:
       - input_network
     command:
-      - python -m ./src/generator/__main__.py 
+      - python -m ./src/generator/__main__.py
 
 
 networks:

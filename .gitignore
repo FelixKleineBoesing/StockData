@@ -1,4 +1,4 @@
-.idea/
+python/.idea/
 env_files/.env-postgres-output
 env_files/.env-postgres-input
 env_files/.env-mongo-input
@@ -6,3 +6,4 @@ env_files/.env-mongo-output
 
 python/data/
 python/src/generator/__pycache__/
+.idea/
