@@ -95,6 +95,8 @@ services:
       - 2181
     environment:
       - ALLOW_ANONYMOUS_LOGIN=yes
+      - ZOOKEEPER_CLIENT_PORT=2181
+      - ZOOKEEPER_TICK_TIME=2000
     networks:
       - input_network
       - output_network
@@ -108,9 +110,11 @@ services:
     environment:
       - KAFKA_BROKER_ID=1
       - KAFKA_LISTENERS=PLAINTEXT://:9092
-      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://127.0.0.1:9092
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://stock-kafka:9092
       - KAFKA_ZOOKEEPER_CONNECT=stock-zookeeper:2181
       - ALLOW_PLAINTEXT_LISTENER=yes
+      - KAFKA_AUTO_CREATE_TOPICS_ENABLE=true
+      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
     depends_on:
       - stock-input-mongo
       - stock-input-postgres
@@ -121,51 +125,63 @@ services:
       - input_network
       - output_network
 
-    stock-schema-registry:
-      image: confluentinc/cp-schema-registry:5.1.2
-      container_name: stock-schema-registry
-      hostname: schema-registry
-      ports:
-        - 8081:8081
-      depends_on:
-        - stock-zookeeper
-        - stock-kafka
-      environment:
-        SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: PLAINTEXT://kafka:9092
-        SCHEMA_REGISTRY_HOST_NAME: schema-registry
-        SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL: zookeeper:2181
-        SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+  stock-schema-registry:
+    image: confluentinc/cp-schema-registry:5.1.2
+    container_name: stock-schema-registry
+    hostname: schema-registry
+    expose:
+      - 8081
+    depends_on:
+      - stock-zookeeper
+      - stock-kafka
+    environment:
+      - SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS=PLAINTEXT://stock-kafka:9092
+      - SCHEMA_REGISTRY_HOST_NAME=stock-schema-registry
+      - SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL=stock-zookeeper:2181
+      - SCHEMA_REGISTRY_LISTENERS=http://0.0.0.0:8081
+    networks:
+      - input_network
+      - output_network
 
-    stock-ksql-server:
-      image: confluentinc/cp-ksql-server:5.1.2
-      container_name: stock-ksql-server
-      depends_on:
-        - stock-kafka
-        - stock-schema-registry
-      environment:
-        KSQL_BOOTSTRAP_SERVERS: kafka:9092
-        KSQL_LISTENERS: http://0.0.0.0:8088
-        KSQL_KSQL_SCHEMA_REGISTRY_URL: http://schema-registry:8081
-        KSQL_KSQL_SERVICE_ID: ksql-server
+  stock-ksql-server:
+    image: confluentinc/cp-ksql-server:5.1.2
+    container_name: stock-ksql-server
+    depends_on:
+      - stock-kafka
+      - stock-schema-registry
+    environment:
+      - KSQL_BOOTSTRAP_SERVERS=stock-kafka:9092
+      - KSQL_LISTENERS=http://0.0.0.0:8088
+      - KSQL_KSQL_SCHEMA_REGISTRY_URL=http://stock-schema-registry:8081
+      - KSQL_KSQL_SERVICE_ID=stock-ksql-server
+    networks:
+      - input_network
+      - output_network
 
-    stock-connect:
-      image: mtpatter/debezium-connect  # built from debezium/connect:0.10
-      container_name: stock-connect
-      depends_on:
-        - stock-zookeeper
-        - stock-kafka
-        - stock-input-postgres
-        - stock-output-postgres
-      ports:
-        - 8083:8083
-      environment:
-        GROUP_ID: 1
-        CONFIG_STORAGE_TOPIC: my-connect-configs
-        OFFSET_STORAGE_TOPIC: my-connect-offsets
-        ADVERTISED_HOST_NAME: connect
-        BOOTSTRAP_SERVERS: kafka:9092
-        CONNECT_INTERNAL_KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
-        CONNECT_INTERNAL_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverte
+  stock-connect:
+    image: debezium-connect  # built from debezium/connect:0.10
+    build:
+      context: ./kafka
+      dockerfile: ./connect/debezium.Dockerfile
+    container_name: stock-connect
+    depends_on:
+      - stock-zookeeper
+      - stock-kafka
+      - stock-input-postgres
+      - stock-output-postgres
+    expose:
+      - 8083
+    environment:
+      - GROUP_ID=1
+      - CONFIG_STORAGE_TOPIC=my-connect-configs
+      - OFFSET_STORAGE_TOPIC=my-connect-offsets
+      - ADVERTISED_HOST_NAME=stock-connect
+      - BOOTSTRAP_SERVERS=stock-kafka:9092
+      - CONNECT_INTERNAL_KEY_CONVERTER=org.apache.kafka.connect.json.JsonConverter
+      - CONNECT_INTERNAL_VALUE_CONVERTER=org.apache.kafka.connect.json.JsonConverte
+    networks:
+      - input_network
+      - output_network
 
   # SPARK SERVICES
 
@@ -234,8 +250,7 @@ services:
       - POSTGRES_INPUT_HOST=stock-input-postgres
     networks:
       - input_network
-    command:
-      - python -m ./src/generator/__main__.py
+    #command: ./src/generator/__main__.py
 
 
 networks:

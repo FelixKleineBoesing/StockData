@@ -22,3 +22,5 @@ COPY ./src/misc /app/src/misc
 COPY ./src/__init__.py /app/src/__init__.py
 
 WORKDIR /app
+
+ENTRYPOINT ["python"]
