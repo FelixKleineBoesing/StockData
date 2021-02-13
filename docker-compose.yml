@@ -97,6 +97,9 @@ services:
       - ALLOW_ANONYMOUS_LOGIN=yes
       - ZOOKEEPER_CLIENT_PORT=2181
       - ZOOKEEPER_TICK_TIME=2000
+    volumes:
+    - zookeeper_data:/var/lib/zookeeper/data
+    - zookeeper_logs:/var/lib/zookeeper/log
     networks:
       - input_network
       - output_network
@@ -105,6 +108,8 @@ services:
     image: confluentinc/cp-kafka:5.1.2
     user: root
     container_name: stock-kafka
+    ports:
+      - 9092:9092
     expose:
       - 9092
     environment:
@@ -115,6 +120,8 @@ services:
       - ALLOW_PLAINTEXT_LISTENER=yes
       - KAFKA_AUTO_CREATE_TOPICS_ENABLE=true
       - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
+    volumes:
+      - kafka_data:/var/lib/kafka/data
     depends_on:
       - stock-input-mongo
       - stock-input-postgres
@@ -149,6 +156,8 @@ services:
     depends_on:
       - stock-kafka
       - stock-schema-registry
+    expose:
+      - 8088
     environment:
       - KSQL_BOOTSTRAP_SERVERS=stock-kafka:9092
       - KSQL_LISTENERS=http://0.0.0.0:8088
@@ -171,6 +180,8 @@ services:
       - stock-output-postgres
     expose:
       - 8083
+    ports:
+      - 8083:8083
     environment:
       - GROUP_ID=1
       - CONFIG_STORAGE_TOPIC=my-connect-configs
@@ -252,6 +263,36 @@ services:
       - input_network
     #command: ./src/generator/__main__.py
 
+  stock-configurator:
+    image: stock-configurator
+    build:
+      context: ./python
+      dockerfile: ./dockerfiles/configurator.Dockerfile
+    container_name: stock-configurator
+    env_file:
+      - python/.env
+    environment:
+      - POSTGRES_INPUT_DB=stocks
+      - POSTGRES_INPUT_PORT=5432
+      - POSTGRES_INPUT_HOST=stock-input-postgres
+      - POSTGRES_OUTPUT_DB=stocks
+      - POSTGRES_OUTPUT_PORT=5432
+      - POSTGRES_OUTPUT_HOST=stock-output-postgres
+      - MONGO_INPUT_HOST=stock-input-mongo,
+      - MONGO_INPUT_PORT=27017,
+      - MONGO_OUTPUT_HOST=stock-output-mongo,
+      - MONGO_OUTPUT_PORT"=27017,
+      - KAFKA_CONNECT_HOST=stock-connect,
+      - KAFKA_CONNECT_PORT=8083,
+      - KAFKA_HOST=stock-kafka
+      - KAFKA_PORT=9092
+      - SCHEMA_HOST=stock-schema-registry,
+      - SCHEMA_PORT=8081
+    networks:
+      - input_network
+      - output_network
+    #command: ./src/configurator/__main__.py
+
 
 networks:
   input_network:
@@ -264,3 +305,6 @@ volumes:
   mongo_output_volume:
   postgres_stock_input:
   postgres_stock_output:
+  zookeeper_logs:
+  zookeeper_data:
+  kafka_data:

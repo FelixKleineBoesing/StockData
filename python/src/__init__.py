@@ -1,0 +1,19 @@
+def get_default_variables():
+    return {
+        "POSTGRES_INPUT_HOST": "localhost",
+        "POSTGRES_INPUT_PORT": 5432,
+        "POSTGRES_INPUT_DB": "stocks",
+        "MONGO_INPUT_HOST": "localhost",
+        "MONGO_INPUT_PORT": 27017,
+        "POSTGRES_OUTPUT_HOST": "localhost",
+        "POSTGRES_OUTPUT_PORT": 5433,
+        "POSTGRES_OUTPUT_DB": "stocks",
+        "MONGO_OUTPUT_HOST": "localhost",
+        "MONGO_OUTPUT_PORT": 27018,
+        "KAFKA_CONNECT_HOST": "localhost",
+        "KAFKA_CONNECT_PORT": 8083,
+        "SCHEMA_HOST": "localhost",
+        "SCHEMA_PORT": 8081,
+        "KAFKA_HOST": "localhost",
+        "KAFKA_PORT": 9092
+    }

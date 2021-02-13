@@ -5,7 +5,7 @@ import numpy as np
 from fkbutils.dbwrapper.postgres import PostgresWrapper
 from fkbutils.misc.config_manager import ConfigManager
 
-from src.generator import get_default_variables
+from src import get_default_variables
 from src.misc.helpers import get_postgres_wrapper
 
 

@@ -2,7 +2,7 @@ from pathlib import Path
 
 from fkbutils.misc import ConfigManager
 
-from src.generator import get_default_variables
+from src import get_default_variables
 from src.generator.__main__initialization import import_init_dataset
 from src.generator.generator import generate_new_prices
 from src.misc.helpers import get_postgres_wrapper
